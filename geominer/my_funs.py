@@ -133,10 +133,12 @@ def find_regexes(regexlist):
 def rev_dict(dict):
     """ Function to reverse a dictionary """
     out_dict = {}
-    for i in range(0, len(dict.keys()):
-                   out_dict.update(dict.values()[i]: dict.keys()[i])
+    for i in range(0, len(dict.keys())):
+                   out_dict[(list(dict.values()))[i]] =  list(dict.keys())[i]
     return(out_dict)
 
-
+# https://stackoverflow.com/questions/13611065/efficient-way-to-apply-multiple-filters-to-pandas-dataframe-or-series
+def conjunction(*conditions):
+    return functools.reduce(np.logical_and, conditions)
 
 

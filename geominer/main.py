@@ -16,7 +16,7 @@ import pandas as pd
 # this doesn't work under Anaconda.
 # import enchant
 # d = enchant.Dict("en_US")
-
+import functools
 import my_funs as mf
 
 
@@ -275,6 +275,7 @@ unique_diseases = set([item for sublist in df_gse_sentences.disease for item in 
 
 # uberon
 
+uberon_ont = Ontology('/home/axel/Documents/ontologies/uberon.owl')
 uberon = Ontology('/home/axel/Documents/ontologies/uberon.owl')
 uberon_ids = []
 for term in uberon:
@@ -340,6 +341,102 @@ re_pcg_hs = re.compile(re_pcg_hs, re.I)
 df_gse_sentences['human_gene'] = df_gse_sentences.sentence.str.findall(re_pcg_hs)
 
 # mesh medical subject headings
+
+
+# extracting useful data
+# this will need to be revisited, just some short term solution to 
+# provide first batch of datasets
+
+# group by gses prior to merging with dsm
+
+df_gse_summary_analysis = df_gse_sentences[['gse',  'disease', 'uberon', 'cl',
+                                            'human_gene']].groupby('gse', as_index=False).agg(sum)
+
+df_gse_mining = pd.merge(dsm, df_gse_summary_analysis, on=['gse',
+                                                           'gse']).drop_duplicates('gse')
+df_gse_mining = df_gse_mining[['title.x', 'gse', 'submission_date.x', 'pubmed_id', 'summary', 'type.x', 'source_name_ch1', 'organism_ch1', 'molecule_ch1', 'technology', 'pancreas','signaling',  'data_lines', 'disease', 'uberon', 'cl']] 
+
+
+list_of_diabetes_diseases = [
+ 'Diabetes Mellitus',
+ 'Diabetes mellitus',
+ 'Diabetic Neuropathy',
+ 'Diabetic Retinopathy',
+ 'Diabetic neuropathy',
+ 'Diabetic retinopathy',
+     'Gestational Diabetes',
+ 'Gestational diabetes mellitus',
+ 'Glucose intolerance',
+ 'Insulin-dependent Diabetes Mellitus',
+ 'Hyperinsulinemia',
+ 'Langerhans-cell histiocytosis',
+ 'MODY',
+     'Proliferative diabetic retinopathy',
+ 'Type 1 diabetes mellitus',
+ 'Type 2 Diabetes Mellitus',
+ 'Type 2 diabetes mellitus',
+ 'Type I Diabetes Mellitus',
+ 'Type II diabetes mellitus',
+     'diabetes insipidus',
+ 'diabetes mellitus',
+ 'diabetic nephropathy',
+ 'diabetic neuropathy',
+ 'diabetic retinopathy',
+ 'gestational diabetes',
+ 'glucose intolerance',
+'hyperinsulinemia',
+ 'hyperinsulinemic hypoglycemia',
+ 'hyperinsulinism',
+ 'hypoglycaemia',
+ 'hypoglycemia',
+     'metabolic disease',
+ 'mitochondrial disease',
+ 'obesity',
+ 'pancreatitis',
+ 'prediabetes',
+ 'proliferative diabetic retinopathy',
+ 'type 1 diabetes mellitus',
+ 'type 2 diabetes mellitus',
+ 'type I diabetes mellitus']
+
+diseases2exlude =(set(unique_diseases) - set(list_of_diabetes_diseases))
+
+gene_hits = df_gse_words[['gse', 'gene']]
+gene_hits = gene_hits.dropna(how='any')
+
+gene_hits = gene_hits.groupby('gse').gene.apply(set).reset_index()
+
+#gene_hits = gene_hits.groupby('gse').gene.apply(','.join).reset_index()
+
+df_gse_mining = pd.merge(df_gse_mining, gene_hits, on=['gse', 'gse'], how = 'outer')
+
+# selection criteria 
+minimum_lines_of_data = 1000 
+target_organism = 'Homo sapiens'
+target_diseases = ['type 1 diabetes mellitus', 'type I diabetes mellitus',
+                   'type 2 diabetes mellitus', 'diabetes mellitus']
+# check type.x field for technology
+target_technology = ['Expression profiling by array']
+
+
+# conditions
+c_1 = df_gse_mining.organism_ch1 == target_organism
+c_2 = df_gse_mining.data_lines > minimum_lines_of_data
+c_3 = df_gse_mining['disease'].apply(lambda x: any(i in x for i in target_diseases)) == True
+c_6 = df_gse_mining['disease'].apply(lambda x: any(i in x for i in diseases2exlude)) == False
+
+c_4 = df_gse_mining.signaling == 1
+c_5 = df_gse_mining.pancreas == 1
+c_7 = df_gse_mining['type.x'] == target_technology[0] 
+
+
+my_selection = df_gse_mining[conjunction(c_1, c_2, c_4, c_5, c_6)]
+
+df_gse_mining[df_gse_mining['disease'].apply(lambda x: any(i in x for i in
+                                                           target_diseases))
+              & df_gse_mining['organism_ch1' == target_organism]]
+
+
 
 
 # TODO
