@@ -49,9 +49,9 @@ df_gse_sentences.columns = ['sentence']
 df_gse_sentences = df_gse_sentences.reset_index(level = ['gse',
                                            'sentence_number'])
 # apply word tokenization and position tagging
-gse_sentences['sentences'] = df_gse_sentences.sentence.apply(nltk.word_tokenize)
-gse_sentences['sentences'] = df_gse_sentences.sentence.apply(nltk.pos_tag)
-gse_words = gse_sentences.groupby(gse_sentences.index).sentences.apply(lambda x: pd.DataFrame([item for sublist in x.values for item in sublist]))
+df_gse_sentences['sentences'] = df_gse_sentences.sentence.apply(nltk.word_tokenize)
+df_gse_sentences['sentences'] = df_gse_sentences.sentence.apply(nltk.pos_tag)
+gse_words = df_    gse_sentences.groupby(gse_sentences.index).sentences.apply(lambda x: pd.DataFrame([item for sublist in x.values for item in sublist]))
 gse_words.columns = ['word', 'pos_tag']
 
 # convert words to lower case words
@@ -155,55 +155,195 @@ for i in all_molecules:
 df_gse_words['word_is_molecule'] = df_gse_words['word'].map(
     lambda x: x in single_word_molecules)
 
-
+"""
+#############################################################################
 ###
-# get noun_phrases(np) from word_features_list(wfl)
-nps_from_wfl = word_features_list
+# create a noun phrase dataframe
+###
+# for now I'll be using sentences to find occurrences of ontology terms
+# NLTK utilizes PENN TREEBANK tags 
+# https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
+# list of grammatical structures to be joined for noun-phrases:
+######
+# the following grammar needs to be improved !!!!!!!!!!!!
+#####
+np_components = ["NN", "NNP", "NNS", "NNPS", "JJ", "JJR", "JJS", 
+                 "VBN", "PRP", "PRP$", "SYM", "CD"]
 
-tmp_list = []
-for i in nps_from_wfl[:30]:
-    if i[1] in np_components:
-        tmp_list.append(i[0])
-    else:
-        tmp = " ".join(tmp_list)
-        i.append(tmp)
-        tmp_list = []
+# some need to be removed, DT, PRP.*, 
+
+grammar = r'NP: {<SYM|VBN|VBG|CD|JJ.*|WP.*|FW|NN.*>+}'
+cp = nltk.RegexpParser(grammar, loop = 2)
+
+df_gse_sentences['np_tagging'] = df_gse_sentences.sentences.apply(lambda x:
+                                                                cp.parse(x))
+
+df_gse_sentences['np_list'] = df_gse_sentences.sentences.apply(
+    lambda x: extract_noun_phrases(x, 'NP'))
 
 
+df_gse_nps = df_gse_sentences.groupby(
+    'gse').np_list.apply(lambda x: pd.DataFrame(
+        [item for sublist in x.values for item in sublist]))
 
-#  word_features_list = [list(elem) for elem in word_features]
-# get noun_phrases(np) from word_features_list(wfl)
-nps_from_wfl = word_features_list
-tmp_list = []
+df_gse_nps.index.names =  ['gse', 'np_in_sentence'] 
+df_gse_nps.columns =  ['np'] 
 
-for i in enumerate(nps_from_wfl):
-    if i[1][1]in np_components:
-        tmp_list.append(i[1][0])
-        print("temp_list:", len(tmp_list))
-    else:
-        tmp = " ".join(tmp_list)
-        for elem in range(1, (len(tmp_list) + 1)):
-            print(elem)
-            #print(nps_from_wfl[i[0]-elem])
-            nps_from_wfl[i[0]-elem].append(tmp)
-        tmp_list = []
+df_gse_nps = df_gse_nps.reset_index(level = ['gse',                 
+                                           'np_in_sentence']) 
+
 
 # check noun phrases for presence of chebi names or synonymes
 
-# duplicate lits for testing purposes
-word_features_list_chebi = word_features_list[:]
+#############################################################################
+"""
 
-# make sure each noun phrase is searched once only:
-test = []
-np_phrase = ["place_holder"]
-for i in enumerate(word_features_list_chebi):
-    if np_phrase[-1] == i[1][-1]:
-        pass
-    else:
-        for names_list in molecules_dict.values():
-            if np_phrase[-1] in names_list:
-                test.append(i[1])
+"""
+   The code below works but is too slow to work with CHEBI try 
+   smaller ontology in the meantime
+
+
+# Check sentences for occurrences of CHEBI terms
+
+
+# remove non letters in all_molecules to dots
+re_all_molecules = []
+for i in all_molecules:
+    re_all_molecules.append(re.sub('[^a-zA-Z]+', '.*', i))
+
+
+# turn list of re_all_molecules into a single regex expression 
+
+big_regex_all_molecules = '|'.join(re_all_molecules)
+
+regex = re.compile(big_regex_all_molecules)
+
+
+df_gse_sentences['chebi'] = df_gse_sentences.sentence.str.findall(
+    regex)
+"""
+
+# Check sentences of occurrences of disease terms
+
+doid = Ontology('/home/axel/Documents/ontologies/doid.owl')
+
+doid_ids = []
+for term in doid:
+    doid_ids.append(term.id)
+
+disease_dict = {}
+for i in doid_ids:
+    disease_dict.update(get_ontology_names(i, doid))
+
+disease_names = np.array([item for sublist in disease_dict.values() 
+                     for item in sublist])
+
+# remove all entries that contain breakets and other characters that may clash
+# with regular expressions
+special_characters = re.compile(r'\[|\(')
+disease_names_with_special_characters = disease_names[
+    [i for i, x in enumerate(disease_names) 
+     if re.search(special_characters, x)]]
+
+
+# the disease Ankylosing spondylitis also occurs as 'as' in the list
+# this needs to be removed
+diseases = set(disease_names) - set(disease_names_with_special_characters) -{'as'}
+
+#diseases_sample = random.sample(diseases, 100)
+
+# create a compiled regex
+# make sure to flank the regexes to make sure that acronymes such as 
+# 'ess', 'Ad', ... don't yield random hits
+# use word boundary character \b for this
+word_boundary = re.compile('^|$')
+# note the r'\\b' otherwise \b turns into \x08
+diseases = [word_boundary.sub(r'\\b', expr) for expr in diseases]
+
+
+disease_regex = '|'.join(diseases)
+
+
+compiled_disease_regex = re.compile(disease_regex, re.I)
+
+df_gse_sentences['disease'] = df_gse_sentences.sentence.str.findall(compiled_disease_regex)
+
+#identified diseases
+unique_diseases = set([item for sublist in df_gse_sentences.disease for item in sublist])
+
+
+
+# uberon
+
+uberon = Ontology('/home/axel/Documents/ontologies/uberon.owl')
+uberon_ids = []
+for term in uberon:
+    uberon_ids.append(term.id)
+
+uberon_dict = {}
+for i in uberon_ids:
+    uberon_dict.update(get_ontology_names(i, uberon))
+
+uberon_names = np.array([item for sublist in uberon_dict.values()             
+                     for item in sublist])
+
+uberon_names_with_special_characters = uberon_names[                          
+    [i for i, x in enumerate(uberon_names)                                     
+     if re.search(special_characters, x)]]           
+
+uberon = [word_boundary.sub(r'\\b', expr) for expr in uberon]  
+uberon_regex = '|'.join(uberon)
+compiled_uberon_regex = re.compile(uberon_regex, re.I)
+df_gse_sentences['uberon'] = df_gse_sentences.sentence.str.findall(compiled_uberon_regex)
+
+unique_uberons = set([item for sublist in df_gse_sentences.uberon for item in sublist])
+
+
+
+# cell ontology: cl
+
+
+cl = Ontology('/home/axel/Documents/ontologies/cl.owl')
+cl_ids = []
+for term in cl:
+    cl_ids.append(term.id)
+
+cl_dict = {}
+for i in cl_ids:
+    cl_dict.update(get_ontology_names(i, cl))
+
+cl_names = np.array([item for sublist in cl_dict.values()
+                     for item in sublist])
+
+cl_names_with_special_characters = cl_names[
+    [i for i, x in enumerate(cl_names)
+     if re.search(special_characters, x)]]
+
+cl = set(cl_names) - set(cl_names_with_special_characters)
+
+
+cl = [word_boundary.sub(r'\\b', expr) for expr in cl]
+cl_regex = '|'.join(cl)
+compiled_cl_regex = re.compile(cl_regex, re.I)
+df_gse_sentences['cl'] = df_gse_sentences.sentence.str.findall(compiled_cl_regex)
+
+unique_cls = set([item for sublist in df_gse_sentences.cl for item in sublist])
+
+# human genes in sentences use pcg_hs 
+# note this approach does without position tagging, hence, lots of false
+# positives
+
+re_pcg_hs = [word_boundary.sub(r'\\b', expr) for expr in pcg_hs]
+re_pcg_hs = '|'.join(re_pcg_hs)
+re_pcg_hs = re.compile(re_pcg_hs, re.I)
+
+df_gse_sentences['human_gene'] = df_gse_sentences.sentence.str.findall(re_pcg_hs)
+
+# mesh medical subject headings
 
 
 # TODO
+# write function that deals with all of the ontology integration
+# get ontology ids for each hit.
+# get parents and children for each hit (id and name)
 
