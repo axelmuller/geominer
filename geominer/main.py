@@ -285,14 +285,14 @@ uberon_dict = {}
 for i in uberon_ids:
     uberon_dict.update(get_ontology_names(i, uberon))
 
-uberon_names = np.array([item for sublist in uberon_dict.values()             
+uberon_names = np.array([item for sublist in uberon_dict.values()
                      for item in sublist])
 
-uberon_names_with_special_characters = uberon_names[                          
-    [i for i, x in enumerate(uberon_names)                                     
-     if re.search(special_characters, x)]]           
+uberon_names_with_special_characters = uberon_names[
+    [i for i, x in enumerate(uberon_names)
+     if re.search(special_characters, x)]]
 
-uberon = [word_boundary.sub(r'\\b', expr) for expr in uberon]  
+uberon = [word_boundary.sub(r'\\b', expr) for expr in uberon]
 uberon_regex = '|'.join(uberon)
 compiled_uberon_regex = re.compile(uberon_regex, re.I)
 df_gse_sentences['uberon'] = df_gse_sentences.sentence.str.findall(compiled_uberon_regex)
@@ -330,6 +330,41 @@ df_gse_sentences['cl'] = df_gse_sentences.sentence.str.findall(compiled_cl_regex
 
 unique_cls = set([item for sublist in df_gse_sentences.cl for item in sublist])
 
+df_gse_sentences.cl = df_gse_sentences.cl.apply(set)
+
+
+###############
+""" get ids, parents and children for each hit
+
+"""
+# convert dictionary to dataframe
+df_cl = pd.DataFrame.from_dict(cl_dict, orient = 'index')
+df_cl['names'] = df_cl[df_cl.columns].values.tolist()
+
+df_cl = df_cl['names'].reset_index()
+df_cl.columns = ['id', 'name']
+df_cl.name = df_cl.apply(lambda row: set(row['name']), axis = 1)
+
+
+####test dfs
+test_ids = [1, 2, 3]
+test_sets_1 = [{'hello world', '42', 'no'}, {'work'}, {'fun'}]
+test_sets_2 = [{'42', 'bye world', 'yes'} , {'house'}, {1, 2}]
+
+test_d1 = {'id' : test_ids, 'text' : test_sets_1}
+test_d2 = {'ref' : test_sets_2}
+
+df_1 = pd.DataFrame(test_d1)
+df_2 = pd.DataFrame(test_d2)
+
+
+df_1.text[0] & df_2.ref[0]
+
+
+
+
+#############
+
 # human genes in sentences use pcg_hs 
 # note this approach does without position tagging, hence, lots of false
 # positives
@@ -357,47 +392,46 @@ df_gse_mining = pd.merge(dsm, df_gse_summary_analysis, on=['gse',
 df_gse_mining = df_gse_mining[['title.x', 'gse', 'submission_date.x', 'pubmed_id', 'summary', 'type.x', 'source_name_ch1', 'organism_ch1', 'molecule_ch1', 'technology', 'pancreas','signaling',  'data_lines', 'disease', 'uberon', 'cl']] 
 
 
-list_of_diabetes_diseases = [
- 'Diabetes Mellitus',
- 'Diabetes mellitus',
- 'Diabetic Neuropathy',
- 'Diabetic Retinopathy',
- 'Diabetic neuropathy',
- 'Diabetic retinopathy',
-     'Gestational Diabetes',
- 'Gestational diabetes mellitus',
- 'Glucose intolerance',
- 'Insulin-dependent Diabetes Mellitus',
- 'Hyperinsulinemia',
- 'Langerhans-cell histiocytosis',
- 'MODY',
-     'Proliferative diabetic retinopathy',
- 'Type 1 diabetes mellitus',
- 'Type 2 Diabetes Mellitus',
- 'Type 2 diabetes mellitus',
- 'Type I Diabetes Mellitus',
- 'Type II diabetes mellitus',
-     'diabetes insipidus',
- 'diabetes mellitus',
- 'diabetic nephropathy',
- 'diabetic neuropathy',
- 'diabetic retinopathy',
- 'gestational diabetes',
- 'glucose intolerance',
+list_of_diabetes_diseases = [ 'Diabetes Mellitus',
+'Diabetes mellitus',
+'Diabetic Neuropathy',
+'Diabetic Retinopathy',
+'Diabetic neuropathy',
+'Diabetic retinopathy',
+'Gestational Diabetes',
+'Gestational diabetes mellitus',
+'Glucose intolerance',
+'Insulin-dependent Diabetes Mellitus',
+'Hyperinsulinemia',
+'Langerhans-cell histiocytosis',
+'MODY',
+'Proliferative diabetic retinopathy',
+'Type 1 diabetes mellitus',
+'Type 2 Diabetes Mellitus',
+'Type 2 diabetes mellitus',
+'Type I Diabetes Mellitus',
+'Type II diabetes mellitus',
+'diabetes insipidus',
+'diabetes mellitus',
+'diabetic nephropathy',
+'diabetic neuropathy',
+'diabetic retinopathy',
+'gestational diabetes',
+'glucose intolerance',
 'hyperinsulinemia',
- 'hyperinsulinemic hypoglycemia',
- 'hyperinsulinism',
- 'hypoglycaemia',
- 'hypoglycemia',
-     'metabolic disease',
- 'mitochondrial disease',
- 'obesity',
- 'pancreatitis',
- 'prediabetes',
- 'proliferative diabetic retinopathy',
- 'type 1 diabetes mellitus',
- 'type 2 diabetes mellitus',
- 'type I diabetes mellitus']
+'hyperinsulinemic hypoglycemia',
+'hyperinsulinism',
+'hypoglycaemia',
+'hypoglycemia',
+'metabolic disease',
+'mitochondrial disease',
+'obesity',
+'pancreatitis',
+'prediabetes',
+'proliferative diabetic retinopathy',
+'type 1 diabetes mellitus',
+'type 2 diabetes mellitus',
+'type I diabetes mellitus']
 
 diseases2exlude =(set(unique_diseases) - set(list_of_diabetes_diseases))
 
