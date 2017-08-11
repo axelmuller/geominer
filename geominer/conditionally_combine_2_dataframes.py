@@ -13,4 +13,5 @@ df_1
 df_2
 
 
-desired_output = pd.DataFrame({'text' : test_sets_2, 'id' : [0, 0, None, 1]})
+desired_output = pd.DataFrame({'text' : test_sets_2, 'id' : ['0', '0', None,
+                                                             '1']})
