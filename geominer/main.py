@@ -18,7 +18,7 @@ import pandas as pd
 # d = enchant.Dict("en_US")
 import functools
 import my_funs as mf
-
+import string
 
 ### from load_input.py
 #  load a gene ontology (not go) 
@@ -347,15 +347,45 @@ df_cl.name = df_cl.apply(lambda row: set(row['name']), axis = 1)
 
 
 ####test dfs
-test_ids = [1, 2, 3]
-test_sets_1 = [{'hello world', '42', 'no'}, {'work'}, {'fun'}]
-test_sets_2 = [{'42', 'bye world', 'yes'} , {'house'}, {1, 2}]
+test_sets_1 = [{'hello world', 333, 42, 'no'},  {42, 51}, {'no hit'}, {'house',
+                                                                      42, 'no hit'}]
+test_sets_2 = [{42, 'bye world', 'yes'} , {'house'}, {42, 99}, {4, 9}]
 
-test_d1 = {'id' : test_ids, 'text' : test_sets_1}
-test_d2 = {'ref' : test_sets_2}
+test_d1 = {'id_1' : range(len(test_sets_1)), 'ref' : test_sets_1}
+test_d2 = {'id_2' : [l for l in string.ascii_lowercase[:len(test_sets_1)]], 'text' : test_sets_2}
+
 
 df_1 = pd.DataFrame(test_d1)
 df_2 = pd.DataFrame(test_d2)
+
+
+df_1 = df_cl
+df_1.columns = ['id_1', 'ref']
+df_2 = df_gse_sentences[['gse', 'cl']]
+df_2.columns = ['id_2', 'text']
+
+
+#
+
+#df_1.ref.apply(lambda x: any(x & df_2.text))
+#df_1[df_1.ref.apply(lambda x: any(x & df_2.text))]
+
+# explode df_1
+
+df_1_expl = df_1.groupby('id_1').ref.apply(lambda x:                       
+          pd.DataFrame([item for sublist in x.values for item in sublist]))
+
+df_1_expl.columns = ['refs']
+df_1_expl = df_1_expl.reset_index('id_1')
+
+
+df_2_expl = df_2.groupby('id_2').text.apply(lambda x:                              
+          pd.DataFrame([item for sublist in x.values for item in sublist]))
+
+df_2_expl.columns = ['values']                                                    
+df_2_expl = df_2_expl.reset_index('id_2')
+
+test_out = pd.merge(df_1_expl, df_2_expl, left_on = 'refs', right_on =  'values')
 
 
 df_1.text[0] & df_2.ref[0]
