@@ -3,21 +3,23 @@ import pronto
 chebi = Ontology("/home/axel/Documents/ontologies/chebi.owl")
 
 
-####
-"""
-the following function is not working: 
-    figure out how to call columns with variables!!
-    """
 def explode(reference, column, df):
     """ The explode function works on columns that store lists.
     Applying the function yields a dataframe where each list element
     is in a separate row. The index is created by using a groupby
     statement on the reference"""
-    out_df = df.groupby(reference).column.apply(lambda x: 
+    out_df = df.groupby(reference)[column].apply(lambda x:
           pd.DataFrame([item for sublist in x.values for item in sublist]))
+    out_df.columns = [column]
+    out_df = out_df.reset_index(reference)
     return(out_df)
-####
 
+def compact_df(reference, column, df):
+    keys,values=df.sort_values(reference).values.T
+    ukeys,index=np.unique(keys,True)
+    arrays=np.split(values,index[1:])
+    df2=pd.DataFrame({reference:ukeys,column:[list(a) for a in arrays]})
+    return df2
 
 
 def obo_split(ont_id, ontology):
@@ -25,26 +27,26 @@ def obo_split(ont_id, ontology):
     return(inp)
 
 
-def get_ontology_names(ont_id, ontology):                                       
-    inp = obo_split(ont_id, ontology)                                           
-    ont_dict = {}                                                               
-    ont_names = []                                                              
-    for e in inp:                                                               
-        if re.search(r'(synonym:)(.*)(EXACT.*$)', e) and re.match(r'(synonym:)(.+)(EXACT.*$)', e):                           
-            e = (re.match(r'(synonym:)(.+)(EXACT.*$)', e)                       
-                 .group(2)                                                      
-                 .lower()                                                       
-                )                                                               
-            pattern = re.compile('\s*"\s*')                                     
-            e = pattern.sub('', e)                                              
-            ont_names.append(e)                                                 
-        if re.search(r'(^name:)(.+)', e) and re.match(r'(name: )(.+)', e):                                       
-            e = (re.match(r'(name: )(.+)', e)                                   
-                 .group(2)                                                      
-                 .lower()                                                       
-            )                                                                   
-            ont_names.append(e)                                                 
-        ont_dict[ont_id] = ont_names                                            
+def get_ontology_names(ont_id, ontology):
+    inp = obo_split(ont_id, ontology)
+    ont_dict = {}
+    ont_names = []
+    for e in inp:
+        if re.search(r'(synonym:)(.*)(EXACT.*$)', e) and re.match(r'(synonym:)(.+)(EXACT.*$)', e):
+            e = (re.match(r'(synonym:)(.+)(EXACT.*$)', e)
+                 .group(2)
+                 .lower()
+                )
+            pattern = re.compile('\s*"\s*')
+            e = pattern.sub('', e)
+            ont_names.append(e)
+        if re.search(r'(^name:)(.+)', e) and re.match(r'(name: )(.+)', e):
+            e = (re.match(r'(name: )(.+)', e)
+                 .group(2)
+                 .lower()
+            )
+            ont_names.append(e)
+        ont_dict[ont_id] = ont_names
     return(ont_dict)   
 
 """
@@ -70,6 +72,52 @@ def get_ontology_names(ont_id, ontology):
         ont_dict[ont_id] = ont_names
     return(ont_dict)
 """
+### the following function needs debugging. It's also not clear if it's 
+### necessary.
+def ont_regex(path_to_ont, ont, ont_type):
+    """ Return a regular expression based on ontology terms and  a dictionary 
+    of ontology IDs and ontology Terms, using 
+    pronto, numpy, re
+    """
+    lont = Ontology((path_to_ont + '/' + ont + '.' + ont_type))
+
+    lont_ids = []
+    for term in lont:
+        lont_ids += term.id
+
+    lont_dict = {}
+    for i in lont_ids:
+        lont_dict.update(get_ontology_names(i, lont))
+
+    lont_names = np.array([item for sublist in lont_dict.values()
+                           for item in sublist])
+
+    #remove entries with special characters that might interfere with 
+    # regular expressions
+    special_characters = re.compile(r'\[|\(')
+    lont_names_with_special_characters = lont_names[
+        [i for i, x in enumerate(lont_names)
+         if re.search(special_characters, x)]]
+    lont = set(lont_names) - set(lont_names_with_special_characters)
+
+    #add word-boundaries to regular expressions and create 'master'-regex
+    lont = [word_boundary.sub(r'\\b', expr) for expr in lont]
+    lont_regex = '|'.join(lont)
+    compiled_lont_regex = re.compile(lont_regex, re.I)
+
+    return(list(compiled_lont_regex, lont_dict))
+
+
+
+
+
+
+
+
+
+
+
+
 def get_simple_names(my_dict):
     """dictionary containing ids as keys and list of names as values serves as  
     input. Output are list of names that lack numbers. This yields simple molecule names"""
