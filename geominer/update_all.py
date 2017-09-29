@@ -13,7 +13,6 @@ conn = sqlite3.connect('GEOmetadb.sqlite')
 #conn.text_factory = bytes
 conn.text_factory = lambda x: str(x, 'latin1')
 
-
 # getting relevant data from GEOmetadb
 # get gses with from relevant techniques
 #gse = pd.read_sql_query("SELECT * FROM gse ", conn)
@@ -34,20 +33,29 @@ print('merging gse and gsm tables')
 gsem = pd.merge(gse, gsm, on='gse')
 gsem.set_index('gse', inplace=True)
 
+# get unique summaries 
+summary = gsem[['summary']].drop_duplicates()
+
 
 # create a df with all ontologies integrated, identified terms and parent terms
 print('updating dataframe')
 time0 = time.time()
-df = update_all(gsem, '/home/axel/Documents/ontologies/ont_selection' )
+df = update_all(summary, '/home/axel/Documents/ontologies/ont_selection' )
+df.drop('summary', axis=1, inplace=True)
 time1 = time.time()
 print('time to update df: ', time1-time0, ' seconds.')
 
+#add results to gsem
+new_columns = df.columns
+gsem_copy = gsem.copy()
+gsem_copy[new_columns] = df
+
 # write to csv
 print('writing dataframe to file')
-df.to_csv("gsem_selection_onts.tsv", sep="\t")
+gsem_copy.to_csv("gsem_9onts_2.csv")
 
 time_end = time.time()
-print('All done! The whole procedure took ', time_end - time_ini, 'seconds.')
+print('All done! The whole procedure took ', time_end - time0, 'seconds.')
 log_file.close()
 
 
