@@ -5,7 +5,56 @@ import re
 import glob
 import numpy as np
 import time
+from numba import jit
+from multiprocessing.pool import ThreadPool
+pool = ThreadPool()
 
+def create_ont_df(path_to_ontology):
+    ont = load_ont(path_to_ontology)
+    ont_name = get_ont_name(path_to_ontology)
+    ont_dict = create_ont_dict(ont)
+    return(ont_dict)
+    df_out = pd.DataFrame.from_dict(ont_dict, orient = 'index')
+    df_out['names'] = df_out[df_out.columns].values.tolist()
+    df_out = df_out['names'].reset_index()
+    df_out.columns = [ont_id, values]
+    df_out.name = df_out.apply(lambda row: set(row['name']), axis = 1)
+    return(df_out)
+
+
+
+
+
+# integrate ontology
+def new_ont_parallel(path_to_ontology, df, column):
+    """ automate integration of new ontology,
+    requires local copy of ontology,
+    will search for ontology terms, yield column with ontology id 
+    and another column with its parents.
+    requires:
+        flashtext
+        from pronto import import *
+        pandas as pd
+        my_functions as mf
+        """
+    
+    ont = load_ont(path_to_ontology)
+    ont_name = get_ont_name(path_to_ontology)
+    ont_dict = create_ont_dict(ont)
+    keyword_processor = KeywordProcessor()
+    keyword_processor.add_keywords_from_dict(ont_dict)
+
+    temp = df[column].apply(lambda x:
+                                    set(keyword_processor.extract_keywords(x)))
+    ont_rparents = get_recursive_parents(df, ont_name, ont)
+    df[ont_name + '_parents'] = ont_rparents.apply(lambda x:                    
+                                  set([elem for subl in x for elem in           
+                                       subl])).fillna('no_hit')   
+    return(df)
+
+
+
+@jit
 def explode(reference, column, df):
     """ The explode function works on columns that store lists.
     Applying the function yields a dataframe where each list element
@@ -17,6 +66,7 @@ def explode(reference, column, df):
     out_df = out_df.reset_index(reference)
     return(out_df)
 
+@jit
 def implode(reference, column, df):
     keys,values=df.sort_values(reference).values.T
     ukeys,index=np.unique(keys,True)
@@ -40,6 +90,8 @@ def flattern(A):
 
 #######################
 
+# using @jit will make this function fail
+# ValueError: cannot compute fingerprint of empty list
 def get_ontology_names(ont_id, ontology):
     """ get name and all its synonymes for each entry 
     """
@@ -86,6 +138,7 @@ def ontdict2ontdf(ont_dict, ont_id = 'ont_id', values = 'name'):
                      
 
 
+@jit
 def create_ont_dict(ont):
     """takes pronto loaded ontology as input, returns dictionary
     requires: pronto
@@ -98,6 +151,7 @@ def create_ont_dict(ont):
         ont_dict.update(get_ontology_names(i, ont))
     return(ont_dict)
 
+@jit
 def get_ont_id(ref, ont_column_name, df, ont_df, ont_id='ont_id', 
                values='name'):
     """add_ont_id takes a reference column, a column that contains
@@ -150,7 +204,7 @@ def get_onts(path_to_ont_directory):
 def get_ontology_path(path_to_ont_directory):
     """ returns full paths of ontologies"""
     onts = get_onts(path_to_ont_directory)
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+#    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
 # load ontology using pronto
 def load_ont(path_to_ontology):
@@ -172,9 +226,6 @@ def get_ont_name(path_to_ontology):
 
     return(ont_name)
     
-
-
-
 # integrate ontology
 def new_ont(path_to_ontology, df, column):
     """ automate integration of new ontology,
