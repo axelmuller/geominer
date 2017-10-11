@@ -9,6 +9,29 @@ from numba import jit
 from multiprocessing.pool import ThreadPool
 pool = ThreadPool()
 
+
+def ont2df(path_to_ontology):
+    """ Function for for creating a pandas dataframe from an ontology.          
+    the df has 3 columns, name of ontology, ontology id, and value """
+    ont = load_ont(path_to_ontology)
+    ont_name = path_to_ontology.split('/')[-1].split('.')[0]  
+    ont_dict = create_ont_dict(ont)
+    columns = ['ontology', 'ont_id', 'names']
+    out_df = ontdict2ontdf(ont_dict)
+    out_df['ontology'] = ont_name
+    return(out_df)
+
+def allonts2df(path_to_ont_directory):
+    """ Function for joining output of 1ont2df() into one df"""
+    onts = get_onts(path_to_ont_directory)
+    columns = ['ontology', 'ont_id', 'names']
+    out_df = pd.DataFrame(columns=columns)
+    for ont in onts:
+        df_ont = ont2df(ont)
+        out_df = out_df.append(df_ont)
+    return(out_df)
+
+
 def create_ont_df(path_to_ontology):
     ont = load_ont(path_to_ontology)
     ont_name = get_ont_name(path_to_ontology)
@@ -54,7 +77,8 @@ def new_ont_parallel(path_to_ontology, df, column):
 
 
 
-@jit
+
+
 def explode(reference, column, df):
     """ The explode function works on columns that store lists.
     Applying the function yields a dataframe where each list element
@@ -66,7 +90,6 @@ def explode(reference, column, df):
     out_df = out_df.reset_index(reference)
     return(out_df)
 
-@jit
 def implode(reference, column, df):
     keys,values=df.sort_values(reference).values.T
     ukeys,index=np.unique(keys,True)
@@ -120,25 +143,24 @@ def get_ontology_names(ont_id, ontology):
     ont_dict[ont_id] = ont_names
     return(ont_dict)
 
-def ontdict2ontdf(ont_dict, ont_id = 'ont_id', values = 'name'):                
-    """ Creates a dataframe from a ontology dictionary,                         
-    column titles for ids and value columns are optional, recommended to        
-    keep the values column as is, ont_id should be changed to the name          
-    of the ontology with an _id suffix."""                                      
-    df_out = pd.DataFrame.from_dict(ont_dict, orient = 'index')                 
-    df_out['names'] = df_out[df_out.columns].values.tolist()                    
-    df_out = df_out['names'].reset_index()                                      
-#    id_column_name = str(ont_name) + '_id'                                     
-    #df_out.columns = [id_column_name, 'name']                                  
-    df_out.columns = [ont_id, values]                                           
-    df_out.name = df_out.apply(lambda row: set(row['name']), axis = 1)          
-    df_out.index = df_out[ont_id]                                               
-#    df_out.drop(ont_id, axis=1, inplace=True)                                   
+def ontdict2ontdf(ont_dict, ont_id = 'ont_id', values = 'name'):
+    """ Creates a dataframe from a ontology dictionary,
+    column titles for ids and value columns are optional, recommended to
+    keep the values column as is, ont_id should be changed to the name
+    of the ontology with an _id suffix."""
+    df_out = pd.DataFrame.from_dict(ont_dict, orient = 'index')
+    df_out['names'] = df_out[df_out.columns].values.tolist()
+    df_out = df_out['names'].reset_index()
+#    id_column_name = str(ont_name) + '_id'
+    #df_out.columns = [id_column_name, 'name']
+    df_out.columns = [ont_id, values]
+    df_out.name = df_out.apply(lambda row: set(row['name']), axis = 1)
+    df_out.index = df_out[ont_id]
+#    df_out.drop(ont_id, axis=1, inplace=True)
     return(df_out)                                                              
                      
 
 
-@jit
 def create_ont_dict(ont):
     """takes pronto loaded ontology as input, returns dictionary
     requires: pronto
@@ -151,7 +173,6 @@ def create_ont_dict(ont):
         ont_dict.update(get_ontology_names(i, ont))
     return(ont_dict)
 
-@jit
 def get_ont_id(ref, ont_column_name, df, ont_df, ont_id='ont_id', 
                values='name'):
     """add_ont_id takes a reference column, a column that contains

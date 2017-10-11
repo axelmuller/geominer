@@ -1,5 +1,7 @@
 from my_funs import *
 
+# set local path to ontologies
+path_to_ontologies = '/home/axel/Documents/ontologies/ont_selection'
 
 # sqlite3 and GEOmetadb, download db using R 
 import sqlite3 
@@ -33,7 +35,7 @@ gsem_selection = gsem[['title_x', 'gse', 'submission_date_x', 'summary',
 gsem_selection.set_index('gse', inplace=True)
 
 # get list of ontologies
-owls =  get_owls('/home/axel/Documents/ontologies/ont_selection') 
+owls =  get_owls(path_to_ontologies) 
 
 # create a df with all ontologies integrated, identified terms and parent terms
 df = update_all(gsem_selection, owls)
