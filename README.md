@@ -1,5 +1,12 @@
 # geominer
 Mining GEO metadata for useful information
 
-So far the scripts use the input file diabetes_series_matrix.tsv. A copy of this file is in my google drive.
-It also requires access to several ontologies
+## Downloading GEOmetadb's sqlite database
+This scripts here take advantage of GEOmetadb's sqlite database. GEOmetadb is a package for R provided by BIOCONDUCTOR.
+The script get_new_geometadb.r will download the newest database it is invoked by
+
+```bash
+Rscript get_new_geometadb.r
+```
+
+
