@@ -31,3 +31,15 @@ bash update_script.sh
 ```
 
 Uploading the output file to GoogleBigQuery could be included into the script but it might be more prudent not to do so for the time being.
+
+## Uploading to GoogleBigQuery
+Below is some sample code:
+```bash
+bq load --autodetect --skip_leading_rows=1 geo_meta.summary_onts gsem_9onts_2.csv.gz
+```
+--autodect takes care of the scheme 
+--skip_leading_rows=1 removes the header
+the next field specifies the destination table 
+and the last item is the file to be uploaded, zipped files are accepted.
+
+
