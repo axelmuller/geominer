@@ -4,6 +4,7 @@ Mining GEO metadata for useful information
 ## Ontologies
 The ontologies are generally obtained through bioportal.
 http://bioportal.bioontology.org/ontologies/DOID
+There are some small dummy ontologies in geominer/geominer that can be used for development
 
 ## Downloading GEOmetadb's sqlite database
 This scripts here take advantage of GEOmetadb's sqlite database. GEOmetadb is a package for R provided by BIOCONDUCTOR.
