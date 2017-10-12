@@ -1,6 +1,10 @@
 # geominer
 Mining GEO metadata for useful information
 
+## Ontologies
+The ontologies are generally obtained through bioportal.
+http://bioportal.bioontology.org/ontologies/DOID
+
 ## Downloading GEOmetadb's sqlite database
 This scripts here take advantage of GEOmetadb's sqlite database. GEOmetadb is a package for R provided by BIOCONDUCTOR.
 The script get_new_geometadb.r will download the newest database can be run with the following command:
