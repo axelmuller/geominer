@@ -44,3 +44,4 @@ the next field specifies the destination table
 and the last item is the file to be uploaded, zipped files are accepted.
 
 
+**describe current tables in bq**
