@@ -2,8 +2,15 @@ from my_funs import *
 import time
 import sys
 
+# User input required:
+path_to_ontologies = '~/test_ontologies'
+outfile = 'my_output.csv'
+logfile = 'my_log_file.log'
+
+# No user input required below (I hope)
+##############################################################
 old_stdout = sys.stdout
-log_file = open('update_all.log', 'w')
+log_file = open(logfile, 'w')
 time_ini = time.time()
 
 # sqlite3 and GEOmetadb, download db using R 
@@ -40,19 +47,18 @@ summary = gsem[['summary']].drop_duplicates()
 # create a df with all ontologies integrated, identified terms and parent terms
 print('updating dataframe')
 time0 = time.time()
-df = update_all(summary, '/home/axel/Documents/ontologies/ont_selection' )
+df = update_all(summary, path_to_ontologies)
 df.drop('summary', axis=1, inplace=True)
 time1 = time.time()
 print('time to update df: ', time1-time0, ' seconds.')
 
 #add results to gsem
 new_columns = df.columns
-gsem_copy = gsem.copy()
-gsem_copy[new_columns] = df
+gsem[new_columns] = df
 
 # write to csv
 print('writing dataframe to file')
-gsem_copy.to_csv("gsem_9onts_2.csv")
+gsem_copy.to_csv(outfile)
 
 time_end = time.time()
 print('All done! The whole procedure took ', time_end - time0, 'seconds.')
