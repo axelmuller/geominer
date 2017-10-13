@@ -44,4 +44,11 @@ the next field specifies the destination table
 and the last item is the file to be uploaded, zipped files are accepted.
 
 
-**describe current tables in bq**
+## Tables currently in GoogleBigQuery
+All tables are under geo_meta:
+combined onts: This table contains gse as identifier, a field with all ontology gse.summary hits, and a field with all ontology hits parents(regressive) 
+gsem: gse and gsm tables from GEOmetadb merged (1.8 million rows at the moment), lots of redundancy on gse level, good for getting all the relevant experiments (gsm) 
+ontology_hits: same as combined_onts, but separated by ontology
+onts: three fields: list of names and synonymes, ontology ids, ontology 
+The field names should be changed to something more meaningful
+summary_onts: join of gsem and ontology_hits
