@@ -40,20 +40,26 @@ summary = gsem[['summary']].drop_duplicates()
 # create a df with all ontologies integrated, identified terms and parent terms
 print('updating dataframe')
 time0 = time.time()
-df = update_all(summary, 'test_onts' )
+df = update_all(summary, '/home/axel/Documents/ontologies/ont_selection' )
 df.drop('summary', axis=1, inplace=True)
 time1 = time.time()
 print('time to update df: ', time1-time0, ' seconds.')
 
 #add results to gsem
 new_columns = df.columns
-gsem_copy = gsem.head(100)
+# the following line can be uncommented for quick test runs
+#gsem_copy = gsem.head(100)
 #gsem_copy = gsem.copy()
-gsem_copy[new_columns] = df
+#gsem_copy[new_columns] = df
+# for quick test runs the next line needs to be commented out
+gsem[new_columns] = df
 
 # write to csv
 print('writing dataframe to file')
-gsem_copy.to_csv("debug.csv")
+# for quick test runs 
+# gsem_copy.to_csv("jan15_test.csv")
+# otherwise:
+gsem.to_csv("jan15_test.csv")
 
 time_end = time.time()
 print('All done! The whole procedure took ', time_end - time0, 'seconds.')
