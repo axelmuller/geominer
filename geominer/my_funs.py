@@ -1,4 +1,5 @@
 import pandas as pd
+from collections import Counter
 from flashtext.keyword import KeywordProcessor
 from pronto import *
 import re
@@ -275,13 +276,53 @@ def new_ont(path_to_ontology, df, column):
     return(df)
 
 
+    
+# integrate ontology with counted occurrences
+def new_ont_count(path_to_ontology, df, column):
+    """ automate integration of new ontology,
+    requires local copy of ontology,
+    will search for ontology terms, yield column with ontology id 
+    and another column with its parents.
+    requires:
+        flashtext
+        from pronto import import *
+        pandas as pd
+        my_functions as mf
+        """
+    
+    ont = load_ont(path_to_ontology)
+    ont_name = get_ont_name(path_to_ontology)
+    ont_dict = create_ont_dict(ont)
+    keyword_processor = KeywordProcessor()
+    keyword_processor.add_keywords_from_dict(ont_dict)
+
+    df[ont_name] = df[column].apply(lambda x:
+                                    Counter(keyword_processor.
+                                            extract_keywords(x)))
+
+    #ont_rparents = get_recursive_parents(df, ont_name, ont)
+    #df[ont_name + '_parents'] = ont_rparents.apply(lambda x:                    
+    #                              set([elem for subl in x for elem in           
+    #                                   subl])).fillna('no_hit')   
+    return(df)
+
+def tidy_ont_hits(df, id_columns, var_columns, val_name):
+    """ takes a dataframe and creates a tidy format """
+    df_tidy = pd.melt(df,
+                      id_vars = id_columns,
+                      var_name = var_columns,
+                      value_name = val_name)
+    return(df_tidy)
+
+
+
 def update_all(df, path_to_ont_directory):                                                       
     onts = get_onts(path_to_ont_directory)
     for ont in onts:                                                            
         ont_file = re.search('(\/)(\w+\.\w{3}$)',ont).group(2)
         print('working on ', ont_file)
         time0 = time.time()
-        df = new_ont(ont, df, 'summary')                                        
+        df = new_ont_count(ont, df, 'summary')                                        
         time1 = time.time()
         print(ont_file, ' completed in ', time1 - time0, 'seconds.')
 
