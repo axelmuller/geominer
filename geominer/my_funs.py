@@ -296,25 +296,42 @@ def new_ont_count(path_to_ontology, df, column):
     keyword_processor = KeywordProcessor()
     keyword_processor.add_keywords_from_dict(ont_dict)
 
-    df[ont_name] = df[column].apply(lambda x:
-                                    Counter(keyword_processor.
-                                            extract_keywords(x)))
+    #df[ont_name] = df[column].apply(lambda x:
+    #                                Counter(keyword_processor.
+    #                                        extract_keywords(x)))
 
+    df[ont_name] = df[column].apply(lambda x:
+                                    [e for e in (
+                                    Counter(keyword_processor.
+                                            extract_keywords(x))).items()                                                                                                                                                                     ])
     #ont_rparents = get_recursive_parents(df, ont_name, ont)
     #df[ont_name + '_parents'] = ont_rparents.apply(lambda x:                    
     #                              set([elem for subl in x for elem in           
     #                                   subl])).fillna('no_hit')   
     return(df)
 
-def tidy_ont_hits(df, id_columns, var_columns, val_name):
-    """ takes a dataframe and creates a tidy format """
+def tidy_ont_hits(df, id_columns=['gse', 'summary'],
+                  var_columns='ontology', 
+                  val_name='ont_hits'):
+    """ takes a dataframe and creates a tidy format,
+    the df should have a gse and summary column as well as 
+    columns with ontology hits"""
     df_tidy = pd.melt(df,
                       id_vars = id_columns,
                       var_name = var_columns,
                       value_name = val_name)
+    # create a row for each hit
+    # create a pd.series 
+    s = df_tidy.apply(lambda x: pd.Series(x['ont_hits']),axis=1).stack().reset_index(level=1, drop=True)
+    s.name='ont_hits'
+    df_tidy = df_tidy.drop('ont_hits', axis=1).join(s)
+
     return(df_tidy)
 
-
+def ancestors(hit_count_tuple, ont_name, ont):
+    """ takes a tuple with an ontology id and number of hits, eg: (DOID:1712,
+    1) and returns the ancestors for the given id"""
+    ancestors = get_recursive_parents(df, ont_name, ont) 
 
 def update_all(df, path_to_ont_directory):                                                       
     onts = get_onts(path_to_ont_directory)
@@ -325,7 +342,12 @@ def update_all(df, path_to_ont_directory):
         df = new_ont_count(ont, df, 'summary')                                        
         time1 = time.time()
         print(ont_file, ' completed in ', time1 - time0, 'seconds.')
-
+    # tidy the dataframe
+    # melt
+    df['gse'] = df.index
+    df = tidy_ont_hits(df)
+###sort this out!    df['parents'] = df.apply(lambda x: df.ontology[ont_hits[0]].rparents())
+                             
     return(df) 
 
 
