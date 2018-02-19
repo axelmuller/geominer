@@ -9,6 +9,7 @@ import time
 from numba import jit
 from multiprocessing.pool import ThreadPool
 pool = ThreadPool()
+import os, sys
 
 
 def ont2df(path_to_ontology):
@@ -37,6 +38,7 @@ def create_ont_df(path_to_ontology):
     ont = load_ont(path_to_ontology)
     ont_name = get_ont_name(path_to_ontology)
     ont_dict = create_ont_dict(ont)
+    # decide which return to use!
     return(ont_dict)
     df_out = pd.DataFrame.from_dict(ont_dict, orient = 'index')
     df_out['names'] = df_out[df_out.columns].values.tolist()
@@ -328,10 +330,6 @@ def tidy_ont_hits(df, id_columns=['gse', 'summary'],
 
     return(df_tidy)
 
-def ancestors(hit_count_tuple, ont_name, ont):
-    """ takes a tuple with an ontology id and number of hits, eg: (DOID:1712,
-    1) and returns the ancestors for the given id"""
-    ancestors = get_recursive_parents(df, ont_name, ont) 
 
 def update_all(df, path_to_ont_directory):                                                       
     onts = get_onts(path_to_ont_directory)
@@ -346,10 +344,62 @@ def update_all(df, path_to_ont_directory):
     # melt
     df['gse'] = df.index
     df = tidy_ont_hits(df)
-###sort this out!    df['parents'] = df.apply(lambda x: df.ontology[ont_hits[0]].rparents())
+    print(onts)
                              
     return(df) 
 
+def read_all_onts(path_to_ont_directory):
+    """ reads all ontologies of given directory into memory. """
+    onts = os.listdir(path_to_ont_directory)
+    ontologies_2_load = []
+    ontologies_names = []
+    ont_dict = {}
+    for ont in onts:
+        path_to_ontology = path_to_ont_directory + ont
+        ontologies_2_load.append(path_to_ontology)
+        ontologies_names.append(ont.split('/')[-1].split('.')[0])
+    for i in enumerate(ontologies_2_load):
+        ont_dict[ontologies_names[i[0]]] = load_ont(ontologies_2_load[i[0]])
+    print(ont_dict)
+    return(ont_dict)
+
+def ancestors(df, path_to_ont_directory):
+    """ adds rparents column to output of update_all """
+    ont_dict = read_all_onts(path_to_ont_directory)
+    df['parents'] = df.apply(lambda x: ont_dict[df.ontology])
+#    df['parents'] = df.apply(lambda x: ont_dict[df.ontology][df.ont_hits[0]].rparents())
+    return(df)
+
+
+def ont_collection(path_to_ont_directory):
+    """ creates a df with all ontologies from target diretory"""
+    onts_dict = {}
+    onts = get_onts(path_to_ont_directory)
+
+    for ont in onts:
+        ont_name = get_ont_name(ont)
+        onts_dict[ont_name] = load_ont(ont)
+    return(ont_dict)
+
+
+test = df.head(5)
+def names_and_ancestors(df, ont_collection):
+    """ uses ont_collection(path_to_ont_diretory)
+    as input as well as a dataframe provided by update_all.
+    Yields a column with names and a column with ancestors"""
+
+    # remove columns with zero counts
+    df = df[df['count'] > 0]
+    df['names'] = df.apply(lambda x: 
+                           ont_collection[x['ontology']][x['ont_id']].
+                           name, axis=1)
+    df['ancestors'] = df.apply(lambda x: 
+                           ont_collection[x['ontology']][x['ont_id']].
+                           rparents(), axis=1)
+
+
+
+    return(df)
 
 
 
