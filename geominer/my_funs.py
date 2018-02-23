@@ -1,6 +1,7 @@
 import pandas as pd
 from collections import Counter
 from flashtext.keyword import KeywordProcessor
+from nltk.corpus import stopwords
 from pronto import *
 import re
 import glob
@@ -120,7 +121,9 @@ def flattern(A):
 # ValueError: cannot compute fingerprint of empty list
 def get_ontology_names(ont_id, ontology):
     """ get name and all its synonymes for each entry 
+    and remove stopwords (from NLTK)
     """
+    stopWords = set(stopwords.words('english'))
     inp = obo_split(ont_id, ontology)
     ont_dict = {}
     ont_names = []
@@ -143,6 +146,9 @@ def get_ontology_names(ont_id, ontology):
             ont_names.append(comment)
 
     ont_names = flattern(ont_names)
+    #remove stopwords from ont_names
+    ont_names = list(set(ont_names)-stopWords)
+
     ont_dict[ont_id] = ont_names
     return(ont_dict)
 
